@@ -1,0 +1,25 @@
+# .github/workflows/synctruenas.yml
+name: Rebase Upstream
+on:
+  schedule:
+  - cron: "0 * * * *"  # run once an hour
+  workflow_dispatch:   # run manually
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+      with:
+        fetch-depth: 10  # greater than the number of commits you made
+    - uses: wongsyrone/sync-upstream-repo@master
+      with:
+        git_clone_depth: 50
+        upstream_repo: https://github.com/truenas/middleware.git
+        upstream_branch: master
+        local_branch: master
+        github_token: ${{ secrets.REBASE_UPSTREAM_TOKEN }}
+    - uses: wongsyrone/delete-workflow-runs@main
+      with:
+        retain_days: 1
+        keep_minimum_runs: 3

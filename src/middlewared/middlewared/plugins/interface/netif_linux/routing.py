@@ -21,6 +21,36 @@ DEFAULT_TABLE_ID = 254  # This is the default table named as "main" and most of 
 ip = IPRoute()
 
 
+def get_iproute2_rt_tables_paths(type="read"):
+    # In new versions, it reads from both /usr and /etc
+    # and the /etc one overrides file in /usr
+    # type read: read locations, package-shipped default and /etc
+    # type write: write locations, to /etc only
+    rt_tables_path = "iproute2/rt_tables"
+    # iproute2 location order by version descending
+    defpaths = ["/usr/share", "/usr/lib", "/usr"]
+    local_full_path = "/etc/iproute2/rt_tables"
+
+    def isAbove650():
+        for p_path in defpaths:
+            f_p = os.path.join(p_path, rt_tables_path)
+            if os.path.exists(f_p):
+                return True, f_p
+        return False, None
+
+    if not os.path.exists(local_full_path):
+        # create if not exist
+        os.makedirs(os.path.dirname(local_full_path), exist_ok=True)
+        with open(local_full_path, mode="a"):
+            pass
+    if type == "write":
+        return [local_full_path]
+    isNewVer, full_path = isAbove650()
+    if not isNewVer:
+        return [local_full_path]
+    return [full_path, local_full_path]
+
+
 class Route:
     def __init__(
         self, network, netmask, gateway=None, interface=None, flags=None,
@@ -77,7 +107,9 @@ class RouteTable:
         self.table_name = table_name
 
     def create(self):
-        with open("/etc/iproute2/rt_tables", "a+") as f:
+        paths = get_iproute2_rt_tables_paths(type="write")
+        assert len(paths) == 1
+        with open(paths[0], "a+") as f:
             f.write(f'{self.table_id} {self.table_name}\n')
 
     @property
@@ -175,17 +207,39 @@ class RoutingTable:
 
     @property
     def routing_tables(self):
-        if not os.path.exists("/etc/iproute2/rt_tables"):
+        iproute2_rt_tables_paths = get_iproute2_rt_tables_paths(type="read")
+        content = []
+        for full_p in iproute2_rt_tables_paths:
+            with open(full_p, "r") as f:
+                content.extend(f.readlines())
+
+        content = list(
+            filter(
+                lambda v: v.strip()
+                and not v.startswith("#")
+                and v.split()[0].strip().isdigit(),
+                content
+            )
+        )
+        if len(content) == 0:
             return {}
 
-        with open("/etc/iproute2/rt_tables", "r") as f:
-            return {
-                t["name"]: RouteTable(t["id"], t["name"])
-                for t in map(lambda v: {"id": int(v.split()[0].strip()), "name": v.split()[1].strip()}, filter(
-                    lambda v: v.strip() and not v.startswith("#") and v.split()[0].strip().isdigit(),
-                    f.readlines()
-                ))
-            }
+        mapping = list(
+            map(
+                lambda v: {
+                    "id": int(v.split()[0].strip()),
+                    "name": v.split()[1].strip(),
+                },
+                content
+            )
+        )
+        deduped = [
+            ii
+            for idx, ii in enumerate(mapping)
+            if ii["id"] not in map(lambda v: v["id"], mapping[idx+1:])
+        ]
+
+        return {t["name"]: RouteTable(t["id"], t["name"]) for t in deduped}
 
     @property
     def default_route_ipv4(self):

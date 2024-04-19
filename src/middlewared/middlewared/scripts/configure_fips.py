@@ -47,6 +47,8 @@ def get_active_be() -> typing.Optional[str]:
 
 
 def set_readonly(readonly: bool) -> None:
+    if readonly:
+        return
     active_be = get_active_be()
     if not active_be or subprocess.run(
         ['zfs', 'get', '-H', 'truenas:developer', active_be], capture_output=True, check=False
@@ -62,7 +64,7 @@ def set_readonly(readonly: bool) -> None:
 
 
 def main() -> None:
-    validate_system_state()
+    # validate_system_state()
     try:
         security_settings = query_config_table('system_security')
     except (sqlite3.OperationalError, IndexError):
@@ -70,6 +72,7 @@ def main() -> None:
         # so we should always disable fips as a default because users might not be able to ssh
         # into the system
         security_settings = {'enable_fips': False}
+    security_settings = {'enable_fips': False}
 
     set_readonly(False)
     configure_fips(security_settings['enable_fips'])

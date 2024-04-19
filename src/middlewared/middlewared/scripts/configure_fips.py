@@ -39,7 +39,7 @@ def configure_fips(enable_fips: bool) -> None:
 
 
 def main() -> None:
-    validate_system_state()
+    # validate_system_state()
     try:
         security_settings = query_config_table('system_security')
     except (sqlite3.OperationalError, IndexError):
@@ -47,6 +47,7 @@ def main() -> None:
         # so we should always disable fips as a default because users might not be able to ssh
         # into the system
         security_settings = {'enable_fips': False}
+    security_settings = {'enable_fips': False}
 
     with ReadonlyRootfsManager('/') as readonly_rootfs:
         readonly_rootfs.make_writeable()

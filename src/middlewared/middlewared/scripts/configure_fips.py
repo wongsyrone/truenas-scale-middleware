@@ -47,6 +47,8 @@ def get_active_be() -> typing.Optional[str]:
 
 
 def set_readonly(readonly: bool) -> None:
+    if readonly:
+        return
     active_be = get_active_be()
     if not active_be or subprocess.run(
         ['zfs', 'get', '-H', 'truenas:developer', active_be], capture_output=True, check=False

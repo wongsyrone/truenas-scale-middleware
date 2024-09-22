@@ -56,4 +56,17 @@ def render(service, middleware):
         })
         break
 
+    docker_registry_mirror_json_path = '/root/docker-registry-mirrors.json'
+    if os.path.exists(docker_registry_mirror_json_path):
+        with open(docker_registry_mirror_json_path, mode='r') as f:
+            try:
+                mirror_arr = json.load(f)
+            except:
+                mirror_arr = []
+            if isinstance(mirror_arr, list) and len(mirror_arr) > 0:
+                base.update({'registry-mirrors': mirror_arr})
+    else:
+        with open(docker_registry_mirror_json_path, mode='w') as f:
+            json.dump([], f)
+
     return json.dumps(base)

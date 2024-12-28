@@ -56,6 +56,19 @@ class UpdateService(Service):
             current_train_name = await self.middleware.call('update.get_current_train_name', trains)
             current_profile = await self.middleware.call('update.current_version_profile')
             matches_profile = await self.middleware.call('update.profile_matches', current_profile, config['profile'])
+            # XXX: upstream updates mess up self-built image
+            #      and save network traffic
+            return self._result('NORMAL', {
+                'status': {
+                    'current_version': {
+                        'train': current_train_name,
+                        'profile': current_profile,
+                        'matches_profile': matches_profile,
+                    },
+                    'new_version': None,
+                },
+                'update_download_progress': None,
+            })
 
             new_version = None
             for next_train in await self.middleware.call('update.get_next_trains_names', trains):

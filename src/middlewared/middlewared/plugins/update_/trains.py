@@ -29,6 +29,9 @@ class UpdateService(Service):
 
     @private
     async def get_scale_update(self, train, current_version):
+        # XXX: upstream updates mess up self-built image
+        #      and save network traffic
+        return {"status": "UNAVAILABLE"}
         new_manifest = await self.fetch(f"{self.update_srv}/{train}/manifest.json")
         if not can_update(current_version, new_manifest["version"]):
             return {"status": "UNAVAILABLE"}

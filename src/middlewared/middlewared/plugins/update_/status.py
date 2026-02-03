@@ -49,6 +49,20 @@ async def status_internal(context: ServiceContext, propagate_exception: bool = F
         current_profile = await current_version_profile(context)
         matches_profile = await profile_matches(context, current_profile, config.profile)
 
+        # XXX: upstream updates mess up self-built image
+        #      and save network traffic
+        return _result(
+            context,
+            'NORMAL',
+            status=UpdateStatusStatus(
+                current_version=UpdateStatusCurrentVersion(
+                    train=current_train_name,
+                    profile=current_profile,
+                    matches_profile=matches_profile,
+                ),
+                new_version=None,
+            ),
+        )
         new_version = None
         for next_train in await get_next_trains_names(context, trains):
             releases = await get_train_releases(context, next_train)
